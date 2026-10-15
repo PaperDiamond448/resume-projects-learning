@@ -1,0 +1,14 @@
+# 灵犀 Mobile · 独立大脑服务端依赖
+# lingxi 核心代码、配置与域路由模型已经随本项目打包，不依赖外部 PC 源码目录。
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.0
+pillow>=10.0          # 路线C 视觉兜底：在截图上画 Set-of-Mark 编号框（visual.py）
+pyyaml>=6.0            # configs/config.yaml
+openai>=1.30           # Qwen3-14B 与 VLM 的 OpenAI 兼容协议客户端
+httpx>=0.27            # LLM 客户端与 FastAPI TestClient
+numpy>=1.24            # 域路由模型运行时
+scikit-learn>=1.3      # data/models/domain_router.pkl 推理
+# 安装（绕过本机失效系统代理）：
+#   $env:NO_PROXY='*'; pip install -r brain/requirements.txt
+# 本机 D:\python 已全部就绪，无需重装。

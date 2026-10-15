@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.bat text eol=lf
+*.ps1 text eol=lf
+*.sh text eol=lf
+*.jar binary
+*.mat binary
+*.pth binary
+*.pkl binary
+*.onnx binary
+*.task binary
+*.so binary
+*.lib binary

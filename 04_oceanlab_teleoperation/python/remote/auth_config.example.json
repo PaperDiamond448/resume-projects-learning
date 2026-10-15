@@ -1,0 +1,15 @@
+{
+  "master_key": "demo-master-change-me",
+  "debug_key": "demo-debug-change-me",
+  "valid_pools": [
+    "pool1",
+    "pool2",
+    "pool3",
+    "1",
+    "2",
+    "3",
+    "test_pool_1"
+  ],
+  "session_timeout": 3600,
+  "reservation_api_url": "https://localhost:3002/api/verify_key"
+}

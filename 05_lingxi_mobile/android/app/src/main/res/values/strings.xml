@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">灵犀 Mobile</string>
+    <string name="hint_input">说点什么…（如：给妈妈发短信说我晚点回家）</string>
+    <string name="send">发送</string>
+    <string name="wake_on">🎙 唤醒：开</string>
+    <string name="wake_off">🎤 唤醒：关</string>
+    <string name="wake_word_btn">唤醒词</string>
+    <string name="wake_pick_title">选个唤醒词，对我喊它我就醒</string>
+    <string name="accessibility_desc">开启后，灵犀可读取当前屏幕、点击控件、输入文字，代你操作任意 App（如打开应用、在聊天里发消息）。仅用于你授权的个人自动化。</string>
+</resources>

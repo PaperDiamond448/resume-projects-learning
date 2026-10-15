@@ -1,0 +1,12 @@
+# Cloud-1 直接依赖锁；版本取自 2026-08-20 已通过29/29与standalone smoke的本机环境。
+# 真正构建首个Linux镜像时还必须保存基础镜像digest与pip安装报告，不能只凭本文件声称完全可复现。
+fastapi==0.135.2
+uvicorn==0.30.0
+pydantic==2.12.5
+pillow==10.4.0
+pyyaml==6.0.2
+openai==2.32.0
+httpx==0.27.0
+numpy==2.2.5
+scikit-learn==1.7.2
+

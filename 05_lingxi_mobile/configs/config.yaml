@@ -1,0 +1,129 @@
+# 灵犀全局配置
+# API Key 一律用 ${ENV_VAR} 形式从环境变量注入，不写明文
+
+llm:
+  provider: dashscope          # dashscope | ollama | custom
+  request_timeout: 12          # 秒（P2-2：30→12，砍掉实测偶发的10~23s尾延时离群，不误伤2~3s正常请求）
+  max_retries: 1               # P2-2：超时类错误不重试（见 client.py），仅其他错误重试1次，避免叠加等待拖垮 <5s
+  use_system_proxy: false      # DashScope/Ollama 国内直连；置 true 才走系统代理
+  fallback_provider: null      # P2-2 兜底：主 provider 超时/失败时切此 provider（如 ollama 本地，端侧无网/尾延时兜底）；null=不兜底
+  providers:
+    dashscope:                 # 阿里云百炼 OpenAI 兼容模式
+      base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      model: qwen3-14b         # 参数量明确14B，合规（账号无 qwen2.5 开源系列权限，qwen3 实测可用且更强）
+      api_key: ${DASHSCOPE_API_KEY}
+      extra_body:
+        enable_thinking: false # qwen3 思考模式仅支持流式，意图理解走非流式必须关闭
+    ollama:                    # 本地部署（端侧可行性演示）
+      base_url: http://localhost:11434/v1
+      model: qwen2.5:7b-instruct
+      api_key: ollama          # ollama 不校验，占位即可
+    custom:                    # 其他 OpenAI 兼容服务（如 SiliconFlow 的 Qwen2.5-14B）
+      base_url: ${CUSTOM_LLM_BASE_URL}
+      model: ${CUSTOM_LLM_MODEL}
+      api_key: ${CUSTOM_LLM_API_KEY}
+
+alignment:
+  window_before: 1.5           # 话语锚定窗口，向前回看秒数
+  window_after: 1.5            # 话语结束后继续观察秒数
+  bus_retention: 60.0          # 事件总线保留时长（秒），过期自动清理
+
+speech:
+  asr_backend: paraformer      # paraformer=中文专用主力(快+准, 阶段9迁移) | whisper=多语种兜底
+  paraformer_dir: data/models/paraformer-zh-small   # sherpa-onnx int8, 78MB
+  asr_model: small             # whisper 后端模型规格（弱机首选 small/int8）
+  asr_compute_type: int8
+  asr_beam_size: 2             # whisper: 质量优先(beam1错字率明显高)
+  asr_cpu_threads: 6           # 限额防止与视觉管线抢满全部核心
+  language: zh
+  mic_device: null             # null=系统默认麦克风
+  hallucination_patterns:      # whisper 噪声幻觉黑名单（live实测出现"字幕by索兰娅"）
+    ["字幕", "订阅", "点赞", "关注", "谢谢观看", "谢谢大家", "amara"]
+  pinyin_correction: true      # 拼音纠错层（live实测修复 草狗/糙糕→草稿、罚→发）
+  correction_lexicon: null     # null=用内置领域词表（perception/audio/corrector.py）
+  # asr_initial_prompt 用默认领域引导语，见 asr.py（可在此覆盖）
+  vad:
+    frame_ms: 30
+    aggressiveness: 2          # 0~3, 越大越不易误触发
+    trigger_ratio: 0.6
+    pre_roll_ms: 300
+    max_silence_ms: 600        # 话语内最大连续静音, 超过即断句
+    max_utterance_s: 15.0
+
+vision:
+  camera_index: 0
+  target_fps: 10               # live实测15fps与ASR争抢CPU致ASR翻倍慢, 10fps对手势/点头检测足够
+  models_dir: data/models/mediapipe
+  gesture:
+    min_confidence: 0.5
+    min_run_s: 0.25            # 短于此的检测段视为抖动丢弃
+    gap_tol_s: 0.5
+    max_run_s: 2.0             # 长持续段按此周期切段发布
+  expression:
+    smile_thresh: 0.30         # blendshapes 阈值，待用户样例标定
+    frown_thresh: 0.25
+    brow_down_thresh: 0.45
+    min_run_s: 0.3
+  head_motion:                 # 参数经用户12条标注样例网格搜索标定, 12/12 (eval/tune_head_motion.py)
+    window_s: 2.0
+    min_amp_deg: 6.0           # 单笔画最小摆幅
+    strong_amp_deg: 15.0       # 达到此摆幅置信度=1.0
+    min_strokes: 3             # 至少三笔画连贯摆动才算点头/摇头(两笔=单次转头-转回)
+    max_range_deg: 25.0        # 窗口内角度活动范围上限; 实测真摇头≤17°, 转头扫视≥52°
+    max_stroke_gap_s: 0.4      # 笔画链最大间隔; 区分真摆动与"转头-停顿-转回"
+    dominance: 1.5             # 主轴能量须超过副轴的倍数
+    cooldown_s: 1.0
+  gaze:
+    yaw_limit_deg: 20          # 头部朝向在此范围内视为面向屏幕
+    pitch_limit_deg: 15
+
+intent:
+  confidence_threshold: 0.6    # 低于此置信度强制澄清反问
+  temperature: 0.1             # 意图理解要求稳定输出
+  use_domain_router: true      # P1-1 域路由小模型前置守门(端侧CPU毫秒级; 高置信OOS不调大模型直接web_search)
+  router_oos_threshold: 0.6    # 域路由判OOS阈值(develop扫描定: t=0.6→precision0.975/recall0.785, precision优先防误拦真实指令)
+  max_pending_turns: 2         # 待确认动作存活轮数, 超过仍未响应则作废(防闲聊误触发确认)
+  visual_support_threshold: 0.75     # 视觉作为拒绝/冲突证据的生产参考阈值
+  vision_only_enabled: false         # 真机正负样本冻结独立授权阈值前，只 shadow 不执行
+  visual_authorize_threshold: null   # 必须经真机 pilot 冻结，且严格高于 support；null 即 fail-closed
+  high_risk_actions:           # 这些待确认动作遇模态冲突时强制澄清（确定性安全规则）
+    - send_message
+    - make_call
+    - send_email
+    - payment
+    - transfer
+    - delete
+    - send_sensitive
+
+persona:
+  profile_dir: data/profiles
+  default_user: default
+
+response:
+  temperature: 0.7             # 应答生成允许一定多样性
+  terminal: mock               # mock=模拟执行(评测/批处理安全,可断言) | real=真实执行低风险动作
+                               # (打开应用/音乐文件夹/系统提醒弹窗; 桌宠 pet_brain 默认注入 real)
+  tts:
+    backend: auto              # 【默认】auto=本地sherpa(VITS,音质好)就绪则优先,否则pyttsx3兜底
+                               # | sherpa=强制本地VITS | pyttsx3=本地SAPI(快,零依赖)
+                               # | edge=在线(代理环境实测卡19s,慎用) | off=静音
+    edge_voice: zh-CN-XiaoxiaoNeural
+    rate: "+10%"
+    edge_timeout: 6.0
+    sherpa:                    # 本地中文VITS（sherpa-onnx，与ASR同款native库，离线、无代理坑、≪3B合规）
+      model_dir: data/models/vits-melo-tts-zh_en  # k2-fsa releases, 中英双语~170MB
+      model: model.onnx         # 完整版；同目录 model.int8.onnx 是LFS指针(仅133B)不可用
+      lexicon: lexicon.txt
+      tokens: tokens.txt
+      dict_dir: dict           # jieba分词词典子目录（melo版需要；winpath已支持递归镜像）
+      data_dir: ""             # espeak-ng数据目录（melo版留空）
+      rule_fsts: phone.fst,date.fst,number.fst,new_heteronym.fst  # 规范化FST(sherpa官方顺序)
+      sid: 0                   # 说话人ID（melo中文单说话人=0）
+      speed: 1.0
+      num_threads: 4
+    echo_window_s: 1.5         # 回声防护时间窗：播报结束后这段时间内才查回声
+    echo_sim_threshold: 0.6    # 与播报文本相似度≥此值才判回声丢弃(防误杀用户真话, 如"没什么")
+
+logging:
+  level: INFO
+  dir: data/logs

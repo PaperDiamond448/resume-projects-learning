@@ -1,0 +1,29 @@
+{
+    "name": "oceanlab-web",
+    "version": "1.0.0",
+    "description": "OceanLab教学平台网页应用",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "test": "jest --coverage",
+        "test:api": "jest api.test.js",
+        "test:frontend": "jest frontend.test.js",
+        "test:with-screenshots": "jest --coverage && node ./test/generate-report.js"
+    },
+    "dependencies": {
+        "express": "^4.17.1",
+        "ws": "^8.3.0",
+        "sqlite3": "^5.0.2",
+        "body-parser": "^1.19.0",
+        "cors": "^2.8.5"
+    },
+    "devDependencies": {
+        "jest": "^27.5.1",
+        "puppeteer": "^13.5.1",
+        "supertest": "^6.2.2"
+    },
+    "jest": {
+        "testEnvironment": "node",
+        "coverageDirectory": "./test/coverage"
+    }
+}

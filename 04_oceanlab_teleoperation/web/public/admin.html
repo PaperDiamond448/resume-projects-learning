@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员统计 - 海洋信息实验教学平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Orbitron:wght@400;700&display=swap');
+        body {
+            font-family: 'Roboto', 'Microsoft Yahei', sans-serif;
+            background: linear-gradient(135deg, #0a1d37 0%, #1e3a8a 100%);
+            color: #e5e7eb;
+            overflow-x: hidden;
+        }
+        .wave-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .wave {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 120px;
+            background: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg') repeat-x;
+            animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+            opacity: 0.6;
+            background-size: 1000px 120px;
+        }
+        .wave:nth-child(2) {
+            bottom: -30px;
+            animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) -4s infinite;
+            opacity: 0.4;
+        }
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-25%); }
+            100% { transform: translateX(0); }
+        }
+        .sonar-wave {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            border: 2px solid rgba(96, 165, 250, 0.4);
+            border-radius: 50%;
+            animation: sonar 2s ease-out infinite;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+        }
+        .sonar-wave:nth-child(2) { animation-delay: 0.5s; }
+        .sonar-wave:nth-child(3) { animation-delay: 1s; }
+        @keyframes sonar {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(5);
+                opacity: 0;
+            }
+        }
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 15s infinite ease-in-out;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) scale(0.5);
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(1.2);
+                opacity: 0;
+            }
+        }
+        nav {
+            background: rgba(10, 29, 55, 0.9);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        nav a, nav button {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        nav a:hover, nav button:hover {
+            color: #60a5fa;
+            transform: translateY(-2px);
+        }
+        nav a::after, nav button::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -2px;
+            left: 0;
+            background-color: #60a5fa;
+            transition: width 0.3s ease;
+        }
+        nav a:hover::after, nav button:hover::after {
+            width: 100%;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        .status-available { background-color: #22c55e; }
+        .status-occupied { background-color: #facc15; }
+        .status-fault { background-color: #ef4444; }
+        .tech-btn {
+            background: linear-gradient(90deg, #2563eb, #60a5fa);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .tech-btn:hover {
+            background: linear-gradient(90deg, #60a5fa, #2563eb);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.7);
+        }
+        .tech-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: 0.5s;
+        }
+        .tech-btn:hover::before {
+            left: 100%;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="relative">
+    <div class="wave-bg">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="sonar-wave"></div>
+        <div class="sonar-wave"></div>
+        <div class="sonar-wave"></div>
+    </div>
+
+    <nav class="sticky top-0 z-50">
+        <div class="container mx-auto flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-8">
+                <img src="assets/logo.png" alt="OceanEdu logo" class="h-8">
+                <div class="hidden md:flex space-x-6">
+                    <a href="index.html" class="text-white font-medium">主页</a>
+                    <a href="personal_center.html" class="text-white font-medium">个人中心</a>
+                    <a href="admin.html" class="text-white font-medium">管理员统计</a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="logoutBtn" class="text-white font-medium">退出</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- 平台统计数据 -->
+        <section class="card p-6 rounded-lg mb-8">
+            <h1 class="text-3xl font-bold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">平台统计数据</h1>
+            <div id="stats" class="text-gray-300">
+                <p>注册人数：<span id="total-users">加载中...</span></p>
+                <h2 class="text-xl font-semibold text-white mt-4">课程完成情况</h2>
+                <ul id="course-completions" class="list-disc pl-6"></ul>
+            </div>
+        </section>
+
+        <!-- 在线用户 -->
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-semibold text-white mb-4">在线用户</h2>
+            <ul id="online-users" class="list-disc pl-6 text-gray-300"></ul>
+        </section>
+
+        <!-- 课程审核区域 -->
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-semibold text-white mb-4">课程审核</h2>
+            <div class="flex justify-between mb-4">
+                <div class="space-x-2">
+                    <button id="pending-filter" class="text-white px-3 py-1 rounded bg-yellow-500/50 hover:bg-yellow-500/80 transition">待审核</button>
+                    <button id="approved-filter" class="text-white px-3 py-1 rounded bg-green-500/50 hover:bg-green-500/80 transition">已通过</button>
+                    <button id="rejected-filter" class="text-white px-3 py-1 rounded bg-red-500/50 hover:bg-red-500/80 transition">已拒绝</button>
+                    <button id="all-filter" class="text-white px-3 py-1 rounded bg-blue-500/50 hover:bg-blue-500/80 transition">全部</button>
+                </div>
+            </div>
+            <div id="course-review-loading" class="text-center text-gray-300 mb-4">加载课程中...</div>
+            <div id="course-list" class="space-y-4"></div>
+        </section>
+
+        <!-- 设备状况和预约管理 -->
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-semibold text-white mb-4">设备状况和预约管理</h2>
+            <div class="mb-4">
+                <label for="reservationDate" class="text-white mr-2">选择日期：</label>
+                <input type="date" id="reservationDate" class="px-2 py-1 rounded text-black" onchange="fetchEquipmentAndReservations()">
+            </div>
+            <div id="equipment-status" class="text-gray-300">
+                <div id="equipment-list" class="grid gap-4 md:grid-cols-3"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 取消预约弹窗 -->
+    <div id="cancelReservationModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-xl font-semibold text-white mb-4">取消预约</h2>
+            <div id="reservationSlots" class="text-gray-300"></div>
+            <button class="tech-btn mt-4" onclick="closeCancelModal()">关闭</button>
+        </div>
+    </div>
+
+    <footer class="bg-[#0a1d37] text-gray-400 text-center py-6">
+        <p>© 2025 海洋信息实验教学平台. 保留所有权利.</p>
+    </footer>
+
+    <script>
+        const baseUrl = 'https://together-shark-hardy.ngrok-free.app';
+
+        // 获取统计数据
+        async function fetchStats() {
+            try {
+                const response = await fetch(`${baseUrl}/stats`);
+                const data = await response.json();
+                document.getElementById('total-users').textContent = data.total_users || '未知';
+                const completionsList = document.getElementById('course-completions');
+                completionsList.innerHTML = '';
+                if (!data.course_completions || data.course_completions.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = '暂无课程完成记录';
+                    completionsList.appendChild(li);
+                } else {
+                    data.course_completions.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = `课程 ${item.course_id}: ${item.completions} 人完成`;
+                        completionsList.appendChild(li);
+                    });
+                }
+            } catch (error) {
+                console.error('获取统计数据失败:', error);
+                document.getElementById('total-users').textContent = '获取失败';
+            }
+        }
+
+        // 获取在线用户
+        async function fetchOnlineUsers() {
+            try {
+                const response = await fetch(`${baseUrl}/online-users`);
+                const data = await response.json();
+                const onlineUsersList = document.getElementById('online-users');
+                onlineUsersList.innerHTML = '';
+                if (!data.online_users || data.online_users.length === 0) {
+                    const li = document.createElement('li');
+                    li.textContent = '当前无在线用户';
+                    onlineUsersList.appendChild(li);
+                } else {
+                    data.online_users.forEach(userId => {
+                        const li = document.createElement('li');
+                        li.textContent = `用户 ID: ${userId}`;
+                        onlineUsersList.appendChild(li);
+                    });
+                }
+            } catch (error) {
+                console.error('获取在线用户失败:', error);
+                const onlineUsersList = document.getElementById('online-users');
+                onlineUsersList.innerHTML = '<li>获取失败</li>';
+            }
+        }
+
+        // 获取设备状态和预约信息
+        async function fetchEquipmentAndReservations() {
+            try {
+                const equipmentResponse = await fetch(`${baseUrl}/equipment-status`);
+                const equipmentData = await equipmentResponse.json();
+                const selectedDate = document.getElementById('reservationDate').value || new Date().toISOString().split('T')[0];
+                const reservationsResponse = await fetch(`${baseUrl}/all-reservations`);
+                const reservationsData = await reservationsResponse.json();
+
+                const equipmentList = document.getElementById('equipment-list');
+                equipmentList.innerHTML = '';
+
+                equipmentData.forEach(equipment => {
+                    const div = document.createElement('div');
+                    div.className = 'p-4 border border-gray-600 rounded-lg';
+                    div.innerHTML = `
+                        <h3 class="text-lg font-semibold text-white">实验池 ${equipment.id}</h3>
+                        <div class="flex items-center mb-2">
+                            <span class="w-4 h-4 rounded-full mr-2 status-${equipment.status}"></span>
+                            <span>${
+                                equipment.status === 'available' ? '可用' :
+                                equipment.status === 'occupied' ? '被占用' : '故障'
+                            }</span>
+                        </div>
+                        <select onchange="updateEquipmentStatus(${equipment.id}, this.value)" class="mb-2 px-2 py-1 rounded">
+                            <option value="available" ${equipment.status === 'available' ? 'selected' : ''}>可用</option>
+                            <option value="occupied" ${equipment.status === 'occupied' ? 'selected' : ''}>被占用</option>
+                            <option value="fault" ${equipment.status === 'fault' ? 'selected' : ''}>维护中</option>
+                        </select>
+                        <h4 class="text-md font-semibold text-white mt-2">当前预约</h4>
+                        <ul class="list-disc pl-4"></ul>
+                        <button class="text-blue-400 mt-2" onclick="showCancelReservationModal(${equipment.id}, '${selectedDate}')">[查看/取消预约]</button>
+                    `;
+
+                    const reservationsList = div.querySelector('ul');
+                    const equipmentReservations = reservationsData.filter(r => r.equipment_id === equipment.id && r.date === selectedDate);
+                    if (equipmentReservations.length === 0) {
+                        const li = document.createElement('li');
+                        li.textContent = '无预约';
+                        reservationsList.appendChild(li);
+                    } else {
+                        equipmentReservations.forEach(reservation => {
+                            const li = document.createElement('li');
+                            li.innerHTML = `
+                                用户: ${reservation.username} (ID: ${reservation.user_id}), 时间: ${reservation.time_slot}
+                                <button class="text-red-400 ml-2" onclick="cancelReservation(${reservation.reservation_id}, ${equipment.id})">[取消]</button>
+                            `;
+                            reservationsList.appendChild(li);
+                        });
+                    }
+
+                    equipmentList.appendChild(div);
+                });
+            } catch (error) {
+                console.error('获取设备状态和预约失败:', error);
+                document.getElementById('equipment-list').innerHTML = '<p>获取失败</p>';
+            }
+        }
+
+        // 显示取消预约弹窗
+        async function showCancelReservationModal(equipmentId, selectedDate) {
+            try {
+                const reservationsResponse = await fetch(`${baseUrl}/all-reservations`);
+                const reservationsData = await reservationsResponse.json();
+                const reservationSlots = document.getElementById('reservationSlots');
+                reservationSlots.innerHTML = '';
+
+                const equipmentReservations = reservationsData.filter(r => r.equipment_id === equipmentId && r.date === selectedDate);
+                if (equipmentReservations.length === 0) {
+                    const div = document.createElement('div');
+                    div.textContent = '该日期无预约';
+                    reservationSlots.appendChild(div);
+                } else {
+                    for (let hour = 0; hour < 24; hour++) {
+                        const startHour = hour.toString().padStart(2, '0');
+                        const endHour = (hour + 1).toString().padStart(2, '0');
+                        const timeSlot = `${startHour}:00-${endHour}:00`;
+
+                        const reservation = equipmentReservations.find(r => r.time_slot === timeSlot);
+                        const slotDiv = document.createElement('div');
+                        slotDiv.className = 'p-2 border-b border-gray-600';
+                        if (reservation) {
+                            slotDiv.innerHTML = `
+                                ${timeSlot} - 用户: ${reservation.username} (ID: ${reservation.user_id})
+                                <button class="text-red-400 ml-2" onclick="cancelReservation(${reservation.reservation_id}, ${equipmentId})">[取消]</button>
+                            `;
+                        } else {
+                            slotDiv.textContent = `${timeSlot} - 无预约`;
+                        }
+                        reservationSlots.appendChild(slotDiv);
+                    }
+                }
+
+                const modal = document.getElementById('cancelReservationModal');
+                modal.style.display = 'flex';
+            } catch (error) {
+                console.error('获取预约记录失败:', error);
+                alert('无法加载预约记录，请稍后重试');
+            }
+        }
+
+        // 关闭取消预约弹窗
+        function closeCancelModal() {
+            const modal = document.getElementById('cancelReservationModal');
+            modal.style.display = 'none';
+            fetchEquipmentAndReservations();
+        }
+
+        // 更新设备状态
+        async function updateEquipmentStatus(equipmentId, status) {
+            try {
+                const response = await fetch(`${baseUrl}/admin/update-equipment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ equipment_id: equipmentId, status })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    alert('设备状态已更新');
+                    fetchEquipmentAndReservations();
+                } else {
+                    alert(data.error || '更新设备状态失败');
+                }
+            } catch (error) {
+                console.error('更新设备状态失败:', error);
+                alert('更新设备状态失败，请重试');
+            }
+        }
+
+        // 取消预约
+        async function cancelReservation(reservationId, equipmentId) {
+            if (!confirm('确定要取消此预约吗？')) return;
+            try {
+                const response = await fetch(`${baseUrl}/cancel-reservation`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reservation_id: reservationId, equipment_id: equipmentId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('预约已取消');
+                    fetchEquipmentAndReservations();
+                } else {
+                    alert(data.error || '取消预约失败');
+                }
+            } catch (error) {
+                console.error('取消预约失败:', error);
+                alert('取消预约失败，请重试');
+            }
+        }
+
+        // 获取课程审核列表
+        async function fetchCourses(statusFilter = 'all') {
+            try {
+                const response = await fetch(`${baseUrl}/admin/courses?status=${statusFilter}`);
+                const data = await response.json();
+                
+                const courseList = document.getElementById('course-list');
+                const loadingIndicator = document.getElementById('course-review-loading');
+                
+                loadingIndicator.style.display = 'block';
+                courseList.innerHTML = '';
+                
+                if (!data.courses || data.courses.length === 0) {
+                    loadingIndicator.style.display = 'none';
+                    courseList.innerHTML = '<p class="text-center text-gray-300">没有符合条件的课程</p>';
+                    return;
+                }
+                
+                loadingIndicator.style.display = 'none';
+                
+                data.courses.forEach(course => {
+                    const courseCard = document.createElement('div');
+                    courseCard.className = 'mb-4 p-4 bg-white/10 rounded-lg';
+                    
+                    let statusBadge = '';
+                    if (course.status === 'pending') {
+                        statusBadge = '<span class="px-2 py-1 bg-yellow-500/50 text-white rounded text-xs">待审核</span>';
+                    } else if (course.status === 'approved') {
+                        statusBadge = '<span class="px-2 py-1 bg-green-500/50 text-white rounded text-xs">已通过</span>';
+                    } else if (course.status === 'rejected') {
+                        statusBadge = '<span class="px-2 py-1 bg-red-500/50 text-white rounded text-xs">已拒绝</span>';
+                    }
+                    
+                    const uploadDate = new Date(course.created_at).toLocaleDateString();
+                    
+                    courseCard.innerHTML = `
+                        <div class="flex flex-col md:flex-row">
+                            <div class="w-full md:w-3/4">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <h3 class="text-lg font-semibold text-white">${course.title}</h3>
+                                    ${statusBadge}
+                                </div>
+                                <p class="text-sm text-gray-300">上传者: ${course.username || '未知用户'} (ID: ${course.user_id})</p>
+                                <p class="text-sm text-gray-300">上传日期: ${uploadDate}</p>
+                                <p class="text-sm text-gray-300">分类: ${course.category}</p>
+                                <p class="text-sm text-gray-300 mt-2">描述: ${course.description}</p>
+                                ${course.feedback ? `<p class="text-sm italic text-gray-400 mt-1">反馈: ${course.feedback}</p>` : ''}
+                            </div>
+                            <div class="w-full md:w-1/4 mt-4 md:mt-0 flex flex-col justify-center items-center gap-2">
+                                ${course.status === 'pending' ? `
+                                    <button class="tech-btn w-full" onclick="approveCourse(${course.course_id})">通过</button>
+                                    <button class="cancel-btn w-full" onclick="showRejectModal(${course.course_id})">拒绝</button>
+                                ` : ''}
+                                ${course.status === 'approved' ? `
+                                    <button class="cancel-btn w-full" onclick="showRejectModal(${course.course_id})">撤销通过</button>
+                                ` : ''}
+                                ${course.status === 'rejected' ? `
+                                    <button class="tech-btn w-full" onclick="approveCourse(${course.course_id})">重新通过</button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                    
+                    courseList.appendChild(courseCard);
+                });
+            } catch (error) {
+                console.error('获取课程列表失败:', error);
+                const loadingIndicator = document.getElementById('course-review-loading');
+                loadingIndicator.style.display = 'none';
+                const courseList = document.getElementById('course-list');
+                courseList.innerHTML = '<p class="text-center text-red-400">获取课程列表失败，请重试</p>';
+            }
+        }
+
+        // 通过课程
+        async function approveCourse(courseId) {
+            try {
+                const response = await fetch(`${baseUrl}/admin/approve-course`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course_id: courseId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('课程已通过审核');
+                    fetchCourses(currentFilter); // 刷新列表
+                } else {
+                    alert(data.error || '操作失败');
+                }
+            } catch (error) {
+                console.error('操作失败:', error);
+                alert('操作失败，请重试');
+            }
+        }
+
+        // 显示拒绝原因输入框
+        function showRejectModal(courseId) {
+            const feedback = prompt('请输入拒绝原因或反馈意见:');
+            if (feedback !== null) {
+                rejectCourse(courseId, feedback);
+            }
+        }
+
+        // 拒绝课程
+        async function rejectCourse(courseId, feedback) {
+            try {
+                const response = await fetch(`${baseUrl}/admin/reject-course`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        course_id: courseId,
+                        feedback: feedback 
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('已拒绝课程');
+                    fetchCourses(currentFilter); // 刷新列表
+                } else {
+                    alert(data.error || '操作失败');
+                }
+            } catch (error) {
+                console.error('操作失败:', error);
+                alert('操作失败，请重试');
+            }
+        }
+
+        // 课程筛选功能
+        let currentFilter = 'pending'; // 默认显示待审核
+        
+        document.getElementById('pending-filter').addEventListener('click', () => {
+            currentFilter = 'pending';
+            fetchCourses(currentFilter);
+        });
+        
+        document.getElementById('approved-filter').addEventListener('click', () => {
+            currentFilter = 'approved';
+            fetchCourses(currentFilter);
+        });
+        
+        document.getElementById('rejected-filter').addEventListener('click', () => {
+            currentFilter = 'rejected';
+            fetchCourses(currentFilter);
+        });
+        
+        document.getElementById('all-filter').addEventListener('click', () => {
+            currentFilter = 'all';
+            fetchCourses(currentFilter);
+        });
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reservationDate').value = today;
+            fetchStats();
+            fetchOnlineUsers();
+            fetchEquipmentAndReservations();
+            fetchCourses('pending'); // 默认显示待审核的课程
+            setInterval(() => {
+                fetchOnlineUsers();
+                fetchEquipmentAndReservations();
+            }, 10000);
+        });
+
+        // 退出登录
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('user_id');
+            alert('已退出登录');
+            window.location.href = 'index.html';
+        });
+
+        // 气泡和声波效果
+        function createBubbles() {
+            const waveBg = document.querySelector('.wave-bg');
+            for (let i = 0; i < 30; i++) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('bubble');
+                const size = Math.random() * 10 + 5;
+                bubble.style.width = `${size}px`;
+                bubble.style.height = `${size}px`;
+                bubble.style.left = `${Math.random() * 100}%`;
+                bubble.style.animationDuration = `${Math.random() * 10 + 10}s`;
+                bubble.style.animationDelay = `${Math.random() * 5}s`;
+                waveBg.appendChild(bubble);
+            }
+        }
+        createBubbles();
+
+        const sonarWaves = document.querySelectorAll('.sonar-wave');
+        document.addEventListener('mousemove', (e) => {
+            sonarWaves.forEach(wave => {
+                wave.style.left = `${e.clientX}px`;
+                wave.style.top = `${e.clientY}px`;
+            });
+        });
+    </script>
+</body>
+</html>

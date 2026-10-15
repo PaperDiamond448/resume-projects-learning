@@ -1,0 +1,69 @@
+name: lingxi-cloud3-secure-local
+
+services:
+  brain:
+    build:
+      context: ../..
+      dockerfile: deploy/cloud/Dockerfile
+    image: lingxi-brain:cloud3-local
+    init: true
+    restart: unless-stopped
+    read_only: true
+    environment:
+      LINGXI_DEPLOYMENT_STAGE: secure-local
+      LINGXI_SECURITY_MODE: required
+      LINGXI_WORKERS: "1"
+      LINGXI_MAX_REQUEST_BYTES: "8388608"
+      LINGXI_DEVICE_AUTH_FILE: /run/secrets/device_auth_registry
+      LINGXI_IDEMPOTENCY_DB: /app/brain/data/security/idempotency.sqlite3
+      LINGXI_MOBILE_PROFILE_DIR: /app/brain/data/profiles
+      # 用户原有台式机 LM Studio 自托管节点；Docker 从宿主机访问该端点。
+      # 当前节点不在身边，所以默认关闭；节点恢复后再显式开启并注入独立 VLM Key。
+      LINGXI_VLM_BASE_URL: http://host.docker.internal:1234/v1
+      LINGXI_VLM_MODEL: qwen2.5-vl-3b-instruct
+      LINGXI_VLM_TIMEOUT: "30"
+      # 这表示“自托管算力节点暂时离线”，不表示模型或既有接入链跑不通。
+      LINGXI_CLOUD_VLM_ENABLED: "false"
+      DASHSCOPE_API_KEY_FILE: /run/secrets/dashscope_api_key
+      QWEATHER_KEY_FILE: /run/secrets/qweather_key
+      AMAP_KEY_FILE: /run/secrets/amap_key
+    secrets:
+      - device_auth_registry
+      - dashscope_api_key
+      - qweather_key
+      - amap_key
+    volumes:
+      - lingxi_brain_secure_data:/app/brain/data
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    ports:
+      # Cloud-4 HTTPS客户端完成前仍只允许当前电脑访问。
+      - "127.0.0.1:8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json,urllib.request;
+          data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/live',timeout=3));
+          assert data=={'status':'alive'}
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+
+secrets:
+  device_auth_registry:
+    file: ./secrets/device_auth_registry.json
+  dashscope_api_key:
+    file: ./secrets/dashscope_api_key.txt
+  qweather_key:
+    file: ./secrets/qweather_key.txt
+  amap_key:
+    file: ./secrets/amap_key.txt
+
+volumes:
+  lingxi_brain_secure_data:

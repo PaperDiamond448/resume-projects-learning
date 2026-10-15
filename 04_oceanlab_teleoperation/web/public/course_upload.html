@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>课程上传 - 海洋信息实验教学平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Orbitron:wght@400;700&display=swap');
+        body {
+            font-family: 'Roboto', 'Microsoft Yahei', sans-serif;
+            background: linear-gradient(135deg, #0a1d37 0%, #1e3a8a 100%);
+            color: #e5e7eb;
+            overflow-x: hidden;
+        }
+        .wave-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .wave {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 120px;
+            background: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg') repeat-x;
+            animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+            opacity: 0.6;
+            background-size: 1000px 120px;
+        }
+        .wave:nth-child(2) {
+            bottom: -30px;
+            animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) -4s infinite;
+            opacity: 0.4;
+        }
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-25%); }
+            100% { transform: translateX(0); }
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        .tech-btn {
+            background: linear-gradient(90deg, #2563eb, #60a5fa);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .tech-btn:hover {
+            background: linear-gradient(90deg, #60a5fa, #2563eb);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.7);
+        }
+        .tech-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: 0.5s;
+        }
+        .tech-btn:hover::before {
+            left: 100%;
+        }
+        input, textarea, select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 5px rgba(96, 165, 250, 0.5);
+            outline: none;
+        }
+        .file-upload {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-upload-label {
+            display: inline-block;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .file-upload-label:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #60a5fa;
+        }
+    </style>
+</head>
+<body class="relative">
+    <div class="wave-bg">
+        <div class="wave"></div>
+        <div class="wave"></div>
+    </div>
+
+    <nav class="sticky top-0 z-50">
+        <div class="container mx-auto flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-8">
+                <img src="assets/logo.png" alt="Ocean Share Edu Logo" class="h-auto" style="width: 120px; margin-right: 1rem;">
+                <div class="hidden md:flex space-x-6">
+                    <a href="index.html" class="text-white font-medium">主页</a>
+                    <a href="index.html#courses" class="text-white font-medium">课程分类</a>
+                    <a href="index.html#features" class="text-white font-medium">平台特色</a>
+                    <a href="index.html#about" class="text-white font-medium">关于我们</a>
+                    <a href="equipment_status.html" class="text-white font-medium">实验器材状态</a>
+                    <a href="personal_center.html" class="text-white font-medium">个人中心</a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="logoutBtn" class="text-white font-medium">退出</button>
+                <div class="w-8 h-8 bg-white rounded-full"></div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-white mb-8" style="font-family: 'Orbitron', sans-serif;">课程上传</h1>
+        
+        <div class="card p-6 rounded-lg max-w-4xl mx-auto">
+            <form id="courseUploadForm" class="space-y-6">
+                <div class="grid gap-6 md:grid-cols-2">
+                    <div>
+                        <label class="block mb-2" for="courseTitle">课程标题</label>
+                        <input type="text" id="courseTitle" class="w-full px-4 py-2 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label class="block mb-2" for="courseCategory">课程分类</label>
+                        <select id="courseCategory" class="w-full px-4 py-2 rounded-lg" required>
+                            <option value="">请选择分类</option>
+                            <option value="underwater_acoustics">水下声学</option>
+                            <option value="sonar_engineering">声纳工程</option>
+                            <option value="wave_propagation">声波传播</option>
+                            <option value="transducer">换能器</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block mb-2" for="courseDescription">课程描述</label>
+                    <textarea id="courseDescription" rows="4" class="w-full px-4 py-2 rounded-lg" required></textarea>
+                </div>
+
+                <div>
+                    <label class="block mb-2" for="courseObjectives">学习目标</label>
+                    <textarea id="courseObjectives" rows="3" class="w-full px-4 py-2 rounded-lg" required></textarea>
+                </div>
+
+                <div>
+                    <label class="block mb-2" for="coursePrerequisites">先修要求</label>
+                    <textarea id="coursePrerequisites" rows="2" class="w-full px-4 py-2 rounded-lg"></textarea>
+                </div>
+
+                <div>
+                    <label class="block mb-2" for="courseDifficulty">课程难度</label>
+                    <select id="courseDifficulty" class="w-full px-4 py-2 rounded-lg" required>
+                        <option value="">请选择难度</option>
+                        <option value="beginner">入门级</option>
+                        <option value="intermediate">中级</option>
+                        <option value="advanced">高级</option>
+                        <option value="expert">专家级</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block mb-2" for="courseDuration">预计学时</label>
+                    <input type="number" id="courseDuration" min="1" class="w-full px-4 py-2 rounded-lg" required>
+                </div>
+
+                <div>
+                    <label class="block mb-2">课程封面</label>
+                    <div class="file-upload">
+                        <input type="file" id="courseCover" accept="image/*" required>
+                        <label for="courseCover" class="file-upload-label">
+                            <span id="coverFileName">选择图片文件</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block mb-2">课程资料</label>
+                    <div class="file-upload">
+                        <input type="file" id="courseMaterials" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.rar">
+                        <label for="courseMaterials" class="file-upload-label">
+                            <span id="materialsFileName">选择课程资料文件</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block mb-2">实验代码</label>
+                    <div class="file-upload">
+                        <input type="file" id="courseCode" multiple accept=".py,.ipynb,.mat">
+                        <label for="courseCode" class="file-upload-label">
+                            <span id="codeFileName">选择代码文件</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <button type="button" class="tech-btn" onclick="window.location.href='index.html'">取消</button>
+                    <button type="submit" class="tech-btn">提交课程</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer class="bg-[#0a1d37] text-gray-400 text-center py-6 mt-8">
+        <p>© 2025 海洋信息实验教学平台. 保留所有权利.</p>
+    </footer>
+
+    <script>
+        // 文件上传处理
+        document.getElementById('courseCover').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || '选择图片文件';
+            document.getElementById('coverFileName').textContent = fileName;
+        });
+
+        document.getElementById('courseMaterials').addEventListener('change', function(e) {
+            const fileCount = e.target.files.length;
+            document.getElementById('materialsFileName').textContent = 
+                fileCount > 0 ? `已选择 ${fileCount} 个文件` : '选择课程资料文件';
+        });
+
+        document.getElementById('courseCode').addEventListener('change', function(e) {
+            const fileCount = e.target.files.length;
+            document.getElementById('codeFileName').textContent = 
+                fileCount > 0 ? `已选择 ${fileCount} 个文件` : '选择代码文件';
+        });
+
+        // 课程上传状态指示
+        function showUploadStatus(message, isError = false) {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `fixed top-4 right-4 p-4 rounded-lg ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+            statusDiv.textContent = message;
+            document.body.appendChild(statusDiv);
+            
+            setTimeout(() => {
+                statusDiv.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                setTimeout(() => {
+                    document.body.removeChild(statusDiv);
+                }, 500);
+            }, 3000);
+        }
+
+        // 表单提交处理
+        document.getElementById('courseUploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const user_id = localStorage.getItem('user_id');
+            if (!user_id) {
+                alert('请先登录');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 显示加载状态
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = '上传中...';
+            submitBtn.disabled = true;
+
+            // 创建课程数据对象
+            const courseData = {
+                user_id: user_id,
+                title: document.getElementById('courseTitle').value,
+                category: document.getElementById('courseCategory').value,
+                description: document.getElementById('courseDescription').value,
+                content: JSON.stringify({
+                    objectives: document.getElementById('courseObjectives').value,
+                    prerequisites: document.getElementById('coursePrerequisites').value,
+                    difficulty: document.getElementById('courseDifficulty').value,
+                    duration: document.getElementById('courseDuration').value
+                })
+            };
+
+            // 使用 API 上传课程信息
+            fetch('http://localhost:3002/upload-course', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(courseData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showUploadStatus('课程上传成功，等待管理员审核');
+                    // 延迟跳转，让用户有时间看到成功消息
+                    setTimeout(() => {
+                        window.location.href = 'personal_center.html';
+                    }, 2000);
+                } else {
+                    showUploadStatus(data.error || '上传失败，请重试', true);
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('上传失败:', error);
+                showUploadStatus(`上传失败: ${error.message}`, true);
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+
+        // 退出登录处理
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('user_id');
+            alert('已退出登录');
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html> 

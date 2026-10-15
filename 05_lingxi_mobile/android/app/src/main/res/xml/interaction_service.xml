@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 默认助手（数字助理）声明：会话服务 + 识别服务 + 设置页；支持 assist 与锁屏唤起 -->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.lingxi.mobile.assist.LingxiInteractionSessionService"
+    android:recognitionService="com.lingxi.mobile.assist.LingxiRecognitionService"
+    android:settingsActivity="com.lingxi.mobile.MainActivity"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="true" />

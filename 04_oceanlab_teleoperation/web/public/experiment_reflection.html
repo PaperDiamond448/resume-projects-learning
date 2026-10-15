@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水下声波传播与反射特性测量实验 - 海洋信息实验教学平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Orbitron:wght@400;700&display=swap');
+        body {
+            font-family: 'Roboto', 'Microsoft Yahei', sans-serif;
+            background: linear-gradient(135deg, #0a1d37 0%, #1e3a8a 100%);
+            color: #e5e7eb;
+            overflow-x: hidden;
+        }
+        .wave-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .wave {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 120px;
+            background: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg') repeat-x;
+            animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+            opacity: 0.6;
+            background-size: 1000px 120px;
+        }
+        .wave:nth-child(2) {
+            bottom: -30px;
+            animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) -4s infinite;
+            opacity: 0.4;
+        }
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-25%); }
+            100% { transform: translateX(0); }
+        }
+        .sonar-wave {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            border: 2px solid rgba(96, 165, 250, 0.4);
+            border-radius: 50%;
+            animation: sonar 2s ease-out infinite;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+        }
+        .sonar-wave:nth-child(2) { animation-delay: 0.5s; }
+        .sonar-wave:nth-child(3) { animation-delay: 1s; }
+        @keyframes sonar {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(5);
+                opacity: 0;
+            }
+        }
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 15s infinite ease-in-out;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) scale(0.5);
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(1.2);
+                opacity: 0;
+            }
+        }
+        nav {
+            background: rgba(10, 29, 55, 0.9);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        nav a, nav button {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        nav a:hover, nav button:hover {
+            color: #60a5fa;
+            transform: translateY(-2px);
+        }
+        nav a::after, nav button::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -2px;
+            left: 0;
+            background-color: #60a5fa;
+            transition: width 0.3s ease;
+        }
+        nav a:hover::after, nav button:hover::after {
+            width: 100%;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        .tech-btn {
+            background: linear-gradient(90deg, #2563eb, #60a5fa);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .tech-btn:hover {
+            background: linear-gradient(90deg, #60a5fa, #2563eb);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.7);
+        }
+        .tech-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: 0.5s;
+        }
+        .tech-btn:hover::before {
+            left: 100%;
+        }
+        input, select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        input:focus, select:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 5px rgba(96, 165, 250, 0.5);
+        }
+        label {
+            color: #e5e7eb;
+        }
+        table {
+            color: #e5e7eb;
+        }
+        th, td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px;
+        }
+        th {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        #spreadPlot, #freqDomainPlot {
+            width: 100%;
+            height: 300px;
+        }
+        #experimentCanvas {
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            background: rgba(0, 0, 50, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="relative">
+    <div class="wave-bg">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="sonar-wave"></div>
+        <div class="sonar-wave"></div>
+        <div class="sonar-wave"></div>
+    </div>
+
+    <nav class="sticky top-0 z-50">
+        <div class="container mx-auto flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-8">
+                <img src="assets/logo.png" alt="Ocean Share Edu Logo" class="h-auto" style="width: 120px; margin-right: 1rem;">
+                <div class="hidden md:flex space-x-6">
+                    <a href="index.html" class="text-white font-medium">主页</a>
+                    <a href="index.html#courses" class="text-white font-medium">课程分类</a>
+                    <a href="index.html#features" class="text-white font-medium">平台特色</a>
+                    <a href="index.html#about" class="text-white font-medium">关于我们</a>
+                    <a href="equipment_status.html" class="text-white font-medium">实验器材状态</a>
+                    <a href="personal_center.html" class="text-white font-medium">个人中心</a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="logoutBtn" class="text-white font-medium">退出</button>
+                <div class="w-8 h-8 bg-white rounded-full"></div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <section class="card p-6 rounded-lg mb-8">
+            <h1 class="text-3xl font-bold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">水下声波传播与反射特性测量实验</h1>
+            <p class="text-gray-300 mb-4">通过虚拟实验，测量水中声波的自由传播损失、界面反射特性，计算声速和反射系数，并进行信号分析。</p>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">实验场景</h2>
+            <canvas id="experimentCanvas"></canvas>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">自由传播测量</h2>
+            <div class="grid gap-6 md:grid-cols-2 mb-4">
+                <div>
+                    <label class="block mb-2" for="spreadDistance">换能器与水听器距离 (m)</label>
+                    <input type="number" id="spreadDistance" value="0.5" min="0.5" max="2.0" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入距离">
+                </div>
+                <div>
+                    <label class="block mb-2" for="signalTypeSpread">信号类型</label>
+                    <select id="signalTypeSpread" class="w-full px-4 py-2 rounded-lg focus:outline-none">
+                        <option value="pulse">短脉冲</option>
+                        <option value="continuous">连续波</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block mb-2" for="frequencySpread">信号频率 (kHz)</label>
+                    <input type="number" id="frequencySpread" value="10" min="1" max="50" step="1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入信号频率">
+                </div>
+            </div>
+            <button id="recordSpread" class="tech-btn">记录</button>
+            <div class="mt-4">
+                <h3 class="text-lg font-semibold text-white mb-2">测量结果</h3>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="p-2">距离 (m)</th>
+                            <th class="p-2">接收幅度 (V)</th>
+                            <th class="p-2">传播损失 (dB)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="spreadResults"></tbody>
+                </table>
+            </div>
+            <div class="mt-4">
+                <h3 class="text-lg font-semibold text-white mb-2">幅度随距离变化</h3>
+                <div id="spreadPlot"></div>
+            </div>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">界面反射测量</h2>
+            <div class="grid gap-6 md:grid-cols-2 mb-4">
+                <div>
+                    <label class="block mb-2" for="directDistance">换能器到水听器距离 (m)</label>
+                    <input type="number" id="directDistance" value="0.5" min="0.5" max="2.0" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入直达距离">
+                </div>
+                <div>
+                    <label class="block mb-2" for="reflectDistance">反射板到声轴距离 (m)</label>
+                    <input type="number" id="reflectDistance" value="0.5" min="0.1" max="1.0" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入反射板距离">
+                </div>
+                <div>
+                    <label class="block mb-2" for="signalTypeReflect">信号类型</label>
+                    <input type="text" id="signalTypeReflect" value="短脉冲" class="w-full px-4 py-2 rounded-lg focus:outline-none" readonly>
+                </div>
+                <div>
+                    <label class="block mb-2" for="frequencyReflect">信号频率 (kHz)</label>
+                    <input type="number" id="frequencyReflect" value="10" min="1" max="50" step="1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入信号频率">
+                </div>
+            </div>
+            <button id="recordReflect" class="tech-btn">记录</button>
+            <div class="mt-4">
+                <h3 class="text-lg font-semibold text-white mb-2">测量结果</h3>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr>
+                            <th class="p-2">直达波幅度 (V)</th>
+                            <th class="p-2">反射波幅度 (V)</th>
+                            <th class="p-2">时间差 (ms)</th>
+                            <th class="p-2">声速 (m/s)</th>
+                            <th class="p-2">反射系数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reflectResults"></tbody>
+                </table>
+            </div>
+            <div class="mt-4">
+                <h3 class="text-lg font-semibold text-white mb-2">频谱分析</h3>
+                <div id="freqDomainPlot"></div>
+            </div>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4 text-white">实验任务与挑战</h2>
+            <ol class="list-decimal ml-6 text-gray-200 space-y-2">
+                <li>仿真多界面反射与折射，分析多路径回波。</li>
+                <li>自定义界面材料，测量反射系数变化。</li>
+                <li>对实验数据进行拟合与误差分析。</li>
+            </ol>
+            <button class="tech-btn mt-4" onclick="startChallenge()">开始挑战</button>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4 text-white">知识点测验</h2>
+            <form id="quizForm">
+                <div class="mb-4">
+                    <label class="block mb-2">1. 声波在水-空气界面反射系数最接近？</label>
+                    <select class="w-full px-4 py-2 rounded-lg" required>
+                        <option value="">请选择</option>
+                        <option value="A">A. 0</option>
+                        <option value="B">B. 0.5</option>
+                        <option value="C">C. 1</option>
+                        <option value="D">D. -1</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2">2. 多路径回波会导致什么现象？</label>
+                    <select class="w-full px-4 py-2 rounded-lg" required>
+                        <option value="">请选择</option>
+                        <option value="A">A. 回波增强</option>
+                        <option value="B">B. 回波延迟</option>
+                        <option value="C">C. 回波失真</option>
+                        <option value="D">D. 以上都有可能</option>
+                    </select>
+                </div>
+                <button type="submit" class="tech-btn">提交测验</button>
+                <div id="quizFeedback" class="mt-4 text-yellow-300"></div>
+            </form>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4 text-white">实验报告提交</h2>
+            <p class="mb-2">请根据实验结果，撰写并提交实验报告：</p>
+            <textarea id="reportText" class="w-full px-4 py-2 rounded-lg mb-2" rows="5" placeholder="输入实验报告内容..."></textarea>
+            <button class="tech-btn" onclick="submitReport()">提交报告</button>
+            <div id="reportFeedback" class="mt-2 text-green-300"></div>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4 text-white">多界面反射/折射仿真</h2>
+            <p class="mb-2">选择界面材料，仿真反射系数：</p>
+            <select id="materialSelect" class="w-full px-4 py-2 rounded mb-2">
+                <option value="water-air">水-空气</option>
+                <option value="water-steel">水-钢</option>
+                <option value="water-sand">水-沙</option>
+                <option value="custom">自定义</option>
+            </select>
+            <div id="customMaterialInputs" style="display:none;" class="mb-2">
+                <input id="rho1" type="number" class="px-2 py-1 rounded mb-1" placeholder="介质1密度(kg/m³)" value="1000">
+                <input id="c1" type="number" class="px-2 py-1 rounded mb-1" placeholder="介质1声速(m/s)" value="1500">
+                <input id="rho2" type="number" class="px-2 py-1 rounded mb-1" placeholder="介质2密度(kg/m³)" value="1.2">
+                <input id="c2" type="number" class="px-2 py-1 rounded mb-1" placeholder="介质2声速(m/s)" value="340">
+            </div>
+            <button class="tech-btn mb-2" onclick="simulateReflection()">仿真反射系数</button>
+            <div id="reflectionResult" class="text-blue-200"></div>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">实验设置</h2>
+            <div class="grid gap-6 md:grid-cols-2">
+                <!-- 实验池选择部分已移至Python客户端 -->
+            </div>
+            <p class="text-gray-300 mt-2">注意：实际远程实验请使用Python客户端进行操作</p>
+        </section>
+    </main>
+
+    <footer class="bg-[#0a1d37] text-gray-400 text-center py-6">
+        <p>© 2025 海洋信息实验教学平台. 保留所有权利.</p>
+    </footer>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        const recordSpreadBtn = document.getElementById('recordSpread');
+        const recordReflectBtn = document.getElementById('recordReflect');
+        const spreadResults = document.getElementById('spreadResults');
+        const reflectResults = document.getElementById('reflectResults');
+        const canvas = document.getElementById('experimentCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let spreadData = []; // 存储自由传播测量数据
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('user_id');
+            alert('已退出登录');
+            window.location.href = 'index.html';
+        });
+
+        // 动态调整 Canvas 大小
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = 300;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // 绘制实验场景
+        function drawScene(directDistance, reflectDistance, mode = 'spread') {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制水槽背景
+            ctx.fillStyle = 'rgba(0, 100, 200, 0.3)';
+            ctx.fillRect(50, 50, canvas.width - 100, 200);
+
+            // 绘制换能器
+            const scaleX = (canvas.width - 100) / 2.5; // 按最大直达距离2m缩放
+            const scaleY = 100 / 1.0; // 按最大反射板距离1m缩放
+            const transducerX = 100;
+            const transducerY = 150;
+            ctx.fillStyle = '#60a5fa';
+            ctx.fillRect(transducerX - 10, transducerY - 20, 20, 40);
+            ctx.fillStyle = '#e5e7eb';
+            ctx.font = '12px Roboto';
+            ctx.fillText('换能器', transducerX - 15, transducerY - 30);
+
+            // 绘制水听器
+            const hydrophoneX = transducerX + directDistance * scaleX;
+            const hydrophoneY = transducerY;
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(hydrophoneX - 10, hydrophoneY - 20, 20, 40);
+            ctx.fillStyle = '#e5e7eb';
+            ctx.fillText('水听器', hydrophoneX - 15, hydrophoneY - 30);
+
+            // 绘制直达波路径
+            ctx.beginPath();
+            ctx.strokeStyle = '#60a5fa';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(transducerX, transducerY);
+            ctx.lineTo(hydrophoneX, hydrophoneY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 绘制反射板和反射波路径（仅在反射模式下）
+            if (mode === 'reflect') {
+                const reflectorX = transducerX + (directDistance / 2) * scaleX;
+                const reflectorY = transducerY + reflectDistance * scaleY;
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(reflectorX - 50, reflectorY - 5, 100, 10); // 水平反射板
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fillText('反射板', reflectorX - 15, reflectorY - 15);
+
+                // 绘制反射波路径
+                ctx.beginPath();
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(transducerX, transducerY);
+                ctx.lineTo(reflectorX, reflectorY);
+                ctx.lineTo(hydrophoneX, hydrophoneY);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // 自由传播测量
+        function recordSpread() {
+            const distance = parseFloat(document.getElementById('spreadDistance').value);
+            const signalType = document.getElementById('signalTypeSpread').value;
+            const frequency = parseFloat(document.getElementById('frequencySpread').value);
+
+            if (distance < 0.5 || distance > 2.0) {
+                alert('距离必须在0.5到2.0米之间！');
+                return;
+            }
+
+            // 计算幅度和传播损失
+            const r0 = 0.5; // 参考距离
+            const amplitude = 1 / distance; // 幅度 ∝ 1/r
+            const spreadLoss = 20 * Math.log10(distance / r0); // PL = 20 * log10(r/r0)
+
+            // 添加到表格
+            const row = `
+                <tr>
+                    <td class="p-2">${distance.toFixed(1)}</td>
+                    <td class="p-2">${amplitude.toFixed(2)}</td>
+                    <td class="p-2">${spreadLoss.toFixed(2)}</td>
+                </tr>`;
+            spreadResults.innerHTML += row;
+
+            // 存储数据并更新图像
+            spreadData.push({ distance, amplitude, signalType, frequency });
+            updateSpreadPlot();
+
+            // 更新场景
+            drawScene(distance, 0, 'spread');
+        }
+
+        // 更新自由传播图像
+        function updateSpreadPlot() {
+            const distances = spreadData.map(d => d.distance);
+            const amplitudes = spreadData.map(d => d.amplitude);
+
+            Plotly.newPlot('spreadPlot', [{
+                x: distances,
+                y: amplitudes,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: '幅度随距离变化',
+                line: { color: '#60a5fa' }
+            }], {
+                title: '幅度随距离变化',
+                xaxis: { title: '距离 (m)' },
+                yaxis: { title: '幅度 (V)' },
+                margin: { t: 50 }
+            });
+        }
+
+        // 界面反射测量
+        function recordReflect() {
+            const directDistance = parseFloat(document.getElementById('directDistance').value);
+            const reflectDistance = parseFloat(document.getElementById('reflectDistance').value);
+            const frequency = parseFloat(document.getElementById('frequencyReflect').value);
+
+            if (directDistance < 0.5 || directDistance > 2.0) {
+                alert('直达距离必须在0.5到2.0米之间！');
+                return;
+            }
+            if (reflectDistance < 0.1 || reflectDistance > 1.0) {
+                alert('反射板距离必须在0.1到1.0米之间！');
+                return;
+            }
+
+            // 计算路径和时间
+            const directPath = directDistance;
+            const reflectPath = 2 * Math.sqrt((directDistance / 2) ** 2 + reflectDistance ** 2);
+            const pathDiff = reflectPath - directPath;
+            const directTime = directPath / 1500 * 1000; // 假设声速1500 m/s，时间(ms)
+            const reflectTime = reflectPath / 1500 * 1000;
+            const timeDiff = reflectTime - directTime;
+            const soundSpeed = pathDiff / (timeDiff / 1000); // c = Δs / Δt
+
+            // 计算幅度
+            const directAmplitude = 1 / directPath;
+            const reflectionCoefficient = 0.8; // 固定反射系数
+            const reflectAmplitude = directAmplitude * reflectionCoefficient; // p_reflect = p_direct * R
+
+            // 添加到表格
+            const row = `
+                <tr>
+                    <td class="p-2">${directAmplitude.toFixed(2)}</td>
+                    <td class="p-2">${reflectAmplitude.toFixed(2)}</td>
+                    <td class="p-2">${timeDiff.toFixed(2)}</td>
+                    <td class="p-2">${soundSpeed.toFixed(0)}</td>
+                    <td class="p-2">${reflectionCoefficient.toFixed(2)}</td>
+                </tr>`;
+            reflectResults.innerHTML += row;
+
+            // 频域分析（短脉冲，显示宽频谱）
+            const freq = Array.from({ length: 500 }, (_, i) => i * 50);
+            const fftDirect = freq.map(f => Math.abs(f - frequency * 1000) < 1000 ? directAmplitude * (1 - Math.abs(f - frequency * 1000) / 1000) : 0.1);
+            const fftReflect = freq.map(f => Math.abs(f - frequency * 1000) < 1000 ? reflectAmplitude * (1 - Math.abs(f - frequency * 1000) / 1000) : 0.1);
+
+            Plotly.newPlot('freqDomainPlot', [
+                {
+                    x: freq,
+                    y: fftDirect,
+                    type: 'scatter',
+                    name: '直达波频谱',
+                    line: { color: '#60a5fa' }
+                },
+                {
+                    x: freq,
+                    y: fftReflect,
+                    type: 'scatter',
+                    name: '反射波频谱',
+                    line: { color: '#ef4444' }
+                }
+            ], {
+                title: '直达波与反射波频谱分析',
+                xaxis: { title: '频率 (Hz)' },
+                yaxis: { title: '幅度' },
+                margin: { t: 50 }
+            });
+
+            // 更新场景
+            drawScene(directDistance, reflectDistance, 'reflect');
+        }
+
+        recordSpreadBtn.addEventListener('click', recordSpread);
+        recordReflectBtn.addEventListener('click', recordReflect);
+
+        // 参数变化时更新场景
+        document.getElementById('spreadDistance').addEventListener('input', () => {
+            const distance = parseFloat(document.getElementById('spreadDistance').value);
+            if (distance >= 0.5 && distance <= 2.0) {
+                drawScene(distance, 0, 'spread');
+            }
+        });
+        document.getElementById('directDistance').addEventListener('input', () => {
+            const directDistance = parseFloat(document.getElementById('directDistance').value);
+            const reflectDistance = parseFloat(document.getElementById('reflectDistance').value);
+            if (directDistance >= 0.5 && directDistance <= 2.0 && reflectDistance >= 0.1 && reflectDistance <= 1.0) {
+                drawScene(directDistance, reflectDistance, 'reflect');
+            }
+        });
+        document.getElementById('reflectDistance').addEventListener('input', () => {
+            const directDistance = parseFloat(document.getElementById('directDistance').value);
+            const reflectDistance = parseFloat(document.getElementById('reflectDistance').value);
+            if (directDistance >= 0.5 && directDistance <= 2.0 && reflectDistance >= 0.1 && reflectDistance <= 1.0) {
+                drawScene(directDistance, reflectDistance, 'reflect');
+            }
+        });
+
+        function createBubbles() {
+            const waveBg = document.querySelector('.wave-bg');
+            for (let i = 0; i < 30; i++) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('bubble');
+                const size = Math.random() * 10 + 5;
+                bubble.style.width = `${size}px`;
+                bubble.style.height = `${size}px`;
+                bubble.style.left = `${Math.random() * 100}%`;
+                bubble.style.animationDuration = `${Math.random() * 10 + 10}s`;
+                bubble.style.animationDelay = `${Math.random() * 5}s`;
+                waveBg.appendChild(bubble);
+            }
+        }
+        createBubbles();
+
+        const sonarWaves = document.querySelectorAll('.sonar-wave');
+        document.addEventListener('mousemove', (e) => {
+            sonarWaves.forEach(wave => {
+                wave.style.left = `${e.clientX}px`;
+                wave.style.top = `${e.clientY}px`;
+            });
+        });
+
+        // 初始化场景
+        drawScene(0.5, 0, 'spread');
+
+        function startChallenge() {
+            alert('挑战开始！请根据任务要求完成实验。');
+        }
+        document.getElementById('quizForm').onsubmit = function(e) {
+            e.preventDefault();
+            const selects = this.querySelectorAll('select');
+            let score = 0;
+            if(selects[0].value === 'C') score++;
+            if(selects[1].value === 'D') score++;
+            document.getElementById('quizFeedback').textContent = `得分：${score}/2。${score===2?'全部正确！':'请复习相关知识点。'}`;
+        };
+        function submitReport() {
+            const text = document.getElementById('reportText').value.trim();
+            if(!text) { document.getElementById('reportFeedback').textContent = '请填写实验报告'; return; }
+            document.getElementById('reportFeedback').textContent = '报告已提交，等待教师批阅。';
+        }
+        document.getElementById('materialSelect').onchange = function() {
+            document.getElementById('customMaterialInputs').style.display = this.value==='custom'?'block':'none';
+        };
+        function simulateReflection() {
+            let rho1, c1, rho2, c2;
+            switch(document.getElementById('materialSelect').value) {
+                case 'water-air': rho1=1000;c1=1500;rho2=1.2;c2=340;break;
+                case 'water-steel': rho1=1000;c1=1500;rho2=7850;c2=5900;break;
+                case 'water-sand': rho1=1000;c1=1500;rho2=2000;c2=1700;break;
+                case 'custom':
+                    rho1=parseFloat(document.getElementById('rho1').value);
+                    c1=parseFloat(document.getElementById('c1').value);
+                    rho2=parseFloat(document.getElementById('rho2').value);
+                    c2=parseFloat(document.getElementById('c2').value);
+                    break;
+            }
+            // 反射系数计算
+            const Z1 = rho1*c1, Z2 = rho2*c2;
+            const R = (Z2-Z1)/(Z2+Z1);
+            document.getElementById('reflectionResult').textContent = `反射系数: ${R.toFixed(3)}`;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+name: lingxi-cloud-local
+
+services:
+  brain:
+    build:
+      context: ../..
+      dockerfile: deploy/cloud/Dockerfile
+    image: lingxi-brain:cloud1-local
+    init: true
+    restart: unless-stopped
+    read_only: true
+    environment:
+      LINGXI_DEPLOYMENT_STAGE: local-container
+      LINGXI_WORKERS: "1"
+      LINGXI_MOBILE_PROFILE_DIR: /app/brain/data/profiles
+      LINGXI_VLM_BASE_URL: http://host.docker.internal:1234/v1
+      LINGXI_VLM_MODEL: qwen2.5-vl-3b-instruct
+      LINGXI_VLM_TIMEOUT: "30"
+      LINGXI_CLOUD_VLM_ENABLED: "false"
+      DASHSCOPE_API_KEY_FILE: /run/secrets/dashscope_api_key
+      QWEATHER_KEY_FILE: /run/secrets/qweather_key
+      AMAP_KEY_FILE: /run/secrets/amap_key
+    secrets:
+      - dashscope_api_key
+      - qweather_key
+      - amap_key
+    volumes:
+      - lingxi_brain_data:/app/brain/data
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    ports:
+      # Cloud-2认证完成前只允许当前电脑访问，不能改成 0.0.0.0。
+      - "127.0.0.1:8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json,urllib.request;
+          data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health',timeout=3));
+          assert data.get('status')=='ok'
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+
+secrets:
+  dashscope_api_key:
+    file: ./secrets/dashscope_api_key.txt
+  qweather_key:
+    file: ./secrets/qweather_key.txt
+  amap_key:
+    file: ./secrets/amap_key.txt
+
+volumes:
+  lingxi_brain_data:

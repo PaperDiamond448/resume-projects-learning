@@ -1,0 +1,8 @@
+# Cloud-2设备认证完成前禁止启用本文件或开放公网端口。
+# 生产时把域名作为 LINGXI_DOMAIN 传给 Caddy；Brain端口只在内部容器网络可见。
+
+{$LINGXI_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy brain:8000
+}
+

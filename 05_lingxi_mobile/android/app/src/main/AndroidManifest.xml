@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 调大脑服务端 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 真办事所需的危险权限（运行时再请求）：发短信 / 打电话 / 读通讯录(名字→号码) / 只读日程 -->
+    <uses-permission android:name="android.permission.SEND_SMS" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- 语音唤醒：端侧 KWS/ASR 常驻麦克风 -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 注视感知：前置摄像头跑 MediaPipe(图像不出端、只输出 gaze_target 文本) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 前台服务（常驻聆听）：FGS + 麦克风类型（Android 14 需显式声明类型权限） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- 多模态确认：语音确认环节同时开前置摄像头采点头/摇头/手势（FGS camera 类型；图像不出端，守 D5） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- 路线C 视觉兜底：MediaProjection 截图须前台服务 type mediaProjection（API34+ 需此权限；低版本忽略） -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- 操作进度悬浮窗：浮在被操作 App 上层显示"它在想什么/到第几步"（需用户在设置里授予） -->
+    <!-- Android 13+ 通知运行时权限（前台服务通知）；低版本自动忽略 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 系统 API 设闹钟（normal 权限，声明即生效） -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+
+    <!-- open_app 需要查询已装应用（Android 11+ 包可见性） -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:name=".LingxiApplication"
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/Theme.Material3.DayNight">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Lingxi.Home">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 内部权限闸门：只在短信/电话真正执行或本地日程查询时出现。 -->
+        <activity
+            android:name=".action.ActionPermissionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
+
+        <!-- 无障碍服务：操作任意 App 的"手"（读屏/点击/输入/手势） -->
+        <service
+            android:name=".accessibility.LingxiAccessibilityService"
+            android:exported="true"
+            android:label="灵犀无障碍（操作 App 的手）"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_config" />
+        </service>
+
+        <activity
+            android:name=".vision.CalibrationActivity"
+            android:exported="false"
+            android:label="灵犀注视校准"
+            android:screenOrientation="portrait" />
+
+        <!-- 语音唤醒前台服务：端侧 KWS 常驻聆听中文唤醒词 → ASR → 大脑 → TTS -->
+        <service
+            android:name=".voice.KwsForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="microphone|camera" />
+
+        <!-- 路线C 视觉兜底前台服务：MediaProjection 截图（用户一次授权后常驻，供 GUI-agent 看屏）。
+             隐私：只截界面（非生物特征），人脸/语音生物特征仍端侧闭环、不经此服务。 -->
+        <service
+            android:name=".vision.ScreenCaptureService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+
+        <!-- ===== 默认助手"三件套"（对标 Siri：长按 Home 全局唤起 + 读当前屏幕 + 后台启动豁免） ===== -->
+        <!-- ① 数字助理入口服务 -->
+        <service
+            android:name=".assist.LingxiInteractionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true">
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/interaction_service" />
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+        </service>
+        <!-- ② 会话服务：唤起后创建 LingxiInteractionSession（读屏 + 按住说话） -->
+        <service
+            android:name=".assist.LingxiInteractionSessionService"
+            android:permission="android.permission.BIND_VOICE_INTERACTION"
+            android:exported="true" />
+        <!-- ③ 识别服务（占位，满足三件套声明；真实识别走端侧 sherpa-onnx ASR） -->
+        <service
+            android:name=".assist.LingxiRecognitionService"
+            android:permission="android.permission.BIND_VOICE_RECOGNITION"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/recognition_service" />
+        </service>
+
+    </application>
+</manifest>

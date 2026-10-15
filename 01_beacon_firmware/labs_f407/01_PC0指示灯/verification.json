@@ -1,0 +1,11 @@
+{
+  "device": "STM32F407VG",
+  "compiler": "AC6.22",
+  "errors": 0,
+  "warnings": 0,
+  "stack_pointer": "0x20000410",
+  "reset_vector": "0x800019d",
+  "systick_vector": "0x80003c5",
+  "hex_checksum": "valid",
+  "hardware_validation": "pending"
+}

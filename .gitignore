@@ -1,0 +1,54 @@
+# Local secrets / user state
+**/.env
+**/.env.*
+!**/.env.example
+**/.secrets/
+**/*.jks
+**/*.keystore
+**/*.pem
+**/*.key
+**/local.properties
+**/release-signing.properties
+**/profiles/
+**/*.db
+**/*.sqlite*
+# Dependencies, caches, build products
+**/.venv/
+**/venv/
+**/node_modules/
+**/__pycache__/
+**/*.py[cod]
+**/.gradle/
+**/.idea/
+**/build/
+**/dist/
+**/Objects/
+**/Obj/
+**/List/
+**/Listings/
+**/coverage/
+**/*.log
+**/*.exe
+**/*.o
+**/*.obj
+**/*.axf
+**/*.elf
+**/*.hex
+**/*.uvgui*
+**/*.apk
+**/*.aab
+# Regenerable LFM exports and inference outputs
+02_lfm_detection/firmware/host_test/ch1_sig.u16
+02_lfm_detection/firmware/host_test/ch1_syn.u8
+02_lfm_detection/firmware/host_test/result_new.txt
+03_infrared_super_resolution/outputs/
+03_infrared_super_resolution/checkpoints/
+# Local-only reports
+**/*.bak*
+**/~$*
+
+02_lfm_detection/result_local.txt
+**/*.build_log.htm
+05_lingxi_mobile/brain/data/app_demos.json
+05_lingxi_mobile/brain/data/app_memory.json
+05_lingxi_mobile/brain/data/app_skills.json

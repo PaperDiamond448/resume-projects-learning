@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>声纳工程实验仿真 - 海洋信息实验教学平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Orbitron:wght@400;700&display=swap');
+        body {
+            font-family: 'Roboto', 'Microsoft Yahei', sans-serif;
+            background: linear-gradient(135deg, #0a1d37 0%, #1e3a8a 100%);
+            color: #e5e7eb;
+            overflow-x: hidden;
+        }
+        .wave-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .wave {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 120px;
+            background: url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/85486/wave.svg') repeat-x;
+            animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+            opacity: 0.6;
+            background-size: 1000px 120px;
+        }
+        .wave:nth-child(2) {
+            bottom: -30px;
+            animation: wave 12s cubic-bezier(0.36, 0.45, 0.63, 0.53) -4s infinite;
+            opacity: 0.4;
+        }
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-25%); }
+            100% { transform: translateX(0); }
+        }
+        .sonar-wave {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            border: 2px solid rgba(96, 165, 250, 0.4);
+            border-radius: 50%;
+            animation: sonar 2s ease-out infinite;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+        }
+        .sonar-wave:nth-child(2) { animation-delay: 0.5s; }
+        .sonar-wave:nth-child(3) { animation-delay: 1s; }
+        @keyframes sonar {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(5);
+                opacity: 0;
+            }
+        }
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: float 15s infinite ease-in-out;
+            pointer-events: none;
+        }
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) scale(0.5);
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(-100vh) scale(1.2);
+                opacity: 0;
+            }
+        }
+        nav {
+            background: rgba(10, 29, 55, 0.9);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        nav a, nav button {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        nav a:hover, nav button:hover {
+            color: #60a5fa;
+            transform: translateY(-2px);
+        }
+        nav a::after, nav button::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -2px;
+            left: 0;
+            background-color: #60a5fa;
+            transition: width 0.3s ease;
+        }
+        nav a:hover::after, nav button:hover::after {
+            width: 100%;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        .tech-btn {
+            background: linear-gradient(90deg, #2563eb, #60a5fa);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .tech-btn:hover {
+            background: linear-gradient(90deg, #60a5fa, #2563eb);
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.7);
+        }
+        .tech-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: 0.5s;
+        }
+        .tech-btn:hover::before {
+            left: 100%;
+        }
+        input, select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        input:focus, select:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 5px rgba(96, 165, 250, 0.5);
+        }
+        label {
+            color: #e5e7eb;
+        }
+        canvas {
+            border: 1px solid #2563eb;
+            background-color: rgba(255, 255, 255, 0.05);
+            width: 100%;
+            height: 200px;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 宽高比 */
+            margin-top: 20px;
+            display: none;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        .video-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background-color: #000;
+        }
+        .video-container .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4444;
+            font-size: 1.2rem;
+            text-align: center;
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .video-container {
+                padding-bottom: 75%; /* 在小屏幕上调整为 4:3 宽高比 */
+            }
+        }
+    </style>
+</head>
+<body class="relative">
+    <div class="wave-bg">
+        <div class="wave"></div>
+        <div class="wave"></div>
+        <div class="sonar-wave"></div>
+        <div class="sonar-wave"></div>
+        <div class="sonar-wave"></div>
+    </div>
+
+    <nav class="sticky top-0 z-50">
+        <div class="container mx-auto flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-8">
+                <img src="assets/logo.png" alt="Ocean Share Edu Logo" class="h-auto" style="width: 120px; margin-right: 1rem;">
+                <div class="hidden md:flex space-x-6">
+                    <a href="index.html" class="text-white font-medium">主页</a>
+                    <a href="index.html#courses" class="text-white font-medium">课程分类</a>
+                    <a href="index.html#features" class="text-white font-medium">平台特色</a>
+                    <a href="index.html#about" class="text-white font-medium">关于我们</a>
+                    <a href="equipment_status.html" class="text-white font-medium">实验器材状态</a>
+                    <a href="personal_center.html" class="text-white font-medium">个人中心</a>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="logoutBtn" class="text-white font-medium">退出</button>
+                <div class="w-8 h-8 bg-white rounded-full"></div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        <section class="card p-6 rounded-lg mb-8">
+            <h1 class="text-3xl font-bold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">声纳工程实验仿真</h1>
+            <p class="text-gray-300 mb-4">在这个实验中，您将选择声纳信号类型（CW、CW 脉冲或 LFM 脉冲），配置信号参数和环境条件，观察接收端的波形和频谱图，并计算接收水平（RL）和信噪比（SNR），判断信号是否可检测。</p>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">实验设置</h2>
+            <div class="grid gap-6 md:grid-cols-2">
+                <!-- 实验池选择部分已移至Python客户端 -->
+            </div>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">参数配置</h2>
+            <div class="grid gap-6 md:grid-cols-2">
+                <div>
+                    <label class="block mb-2" for="signalType">信号类型</label>
+                    <select id="signalType" class="w-full px-4 py-2 rounded-lg focus:outline-none">
+                        <option value="cw">连续波 (CW)</option>
+                        <option value="cwPulse">CW 脉冲</option>
+                        <option value="lfm">线性调频脉冲 (LFM)</option>
+                    </select>
+                </div>
+                <div id="frequencyDiv">
+                    <label class="block mb-2" for="frequency">频率 (Hz)</label>
+                    <input type="number" id="frequency" value="1000" min="100" max="5000" step="100" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入频率">
+                </div>
+                <div id="pulseDurationDiv" class="hidden">
+                    <label class="block mb-2" for="pulseDuration">脉冲持续时间 (ms)</label>
+                    <input type="number" id="pulseDuration" value="100" min="10" max="500" step="10" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入脉冲持续时间">
+                </div>
+                <div id="lfmBandwidthDiv" class="hidden">
+                    <label class="block mb-2" for="lfmBandwidth">LFM 带宽 (Hz)</label>
+                    <input type="number" id="lfmBandwidth" value="500" min="100" max="2000" step="100" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入 LFM 带宽">
+                </div>
+                <div>
+                    <label class="block mb-2" for="transmitterX">发射器位置 X (m)</label>
+                    <input type="number" id="transmitterX" value="0.0" min="-1.5" max="1.5" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入发射器 X 坐标">
+                </div>
+                <div>
+                    <label class="block mb-2" for="transmitterY">发射器位置 Y (m)</label>
+                    <input type="number" id="transmitterY" value="0.0" min="-1.0" max="1.0" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入发射器 Y 坐标">
+                </div>
+                <div>
+                    <label class="block mb-2" for="transmitterZ">发射器深度 Z (m)</label>
+                    <input type="number" id="transmitterZ" value="0.5" min="0.0" max="1.0" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入发射器深度">
+                </div>
+                <div>
+                    <label class="block mb-2" for="receiverX">接收器位置 X (m)</label>
+                    <input type="number" id="receiverX" value="1.0" min="-1.5" max="1.5" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入接收器 X 坐标">
+                </div>
+                <div>
+                    <label class="block mb-2" for="receiverY">接收器位置 Y (m)</label>
+                    <input type="number" id="receiverY" value="0.0" min="-1.0" max="1.0" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入接收器 Y 坐标">
+                </div>
+                <div>
+                    <label class="block mb-2" for="receiverZ">接收器深度 Z (m)</label>
+                    <input type="number" id="receiverZ" value="0.5" min="0.0" max="1.0" step="0.1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入接收器深度">
+                </div>
+                <div>
+                    <label class="block mb-2" for="noiseLevel">噪声水平 (dB)</label>
+                    <input type="number" id="noiseLevel" value="60" min="40" max="120" step="1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入噪声水平">
+                </div>
+                <div>
+                    <label class="block mb-2" for="detectionThreshold">检测阈值 (dB)</label>
+                    <input type="number" id="detectionThreshold" value="5" min="0" max="20" step="1" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入检测阈值">
+                </div>
+                <div>
+                    <label class="block mb-2" for="alpha">吸收系数 (dB/m)</label>
+                    <input type="number" id="alpha" value="0.1" min="0.0" max="1.0" step="0.01" class="w-full px-4 py-2 rounded-lg focus:outline-none" placeholder="请输入吸收系数">
+                </div>
+            </div>
+            <button id="runExperiment" class="tech-btn mt-6">运行模拟实验</button>
+            <p class="text-gray-300 mt-2">注意：实际远程实验请使用Python客户端进行操作</p>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">接收信号波形</h2>
+            <canvas id="waveformCanvas" width="600" height="200"></canvas>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">接收信号频谱</h2>
+            <canvas id="spectrumCanvas" width="600" height="200"></canvas>
+        </section>
+
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">实时图像反馈</h2>
+            <div id="videoContainer" class="video-container">
+                <p class="text-gray-300 p-4">实时视频反馈功能已迁移至Python客户端，请使用客户端进行实际实验操作。</p>
+            </div>
+        </section>
+
+        <section id="resultSection" class="card p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4" style="font-family: 'Orbitron', sans-serif;">实验结果</h2>
+            <div class="space-y-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-2">接收声压级 (RL, dB)</h3>
+                    <p id="receivedLevel" class="text-gray-300">0 dB</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-2">信噪比 (SNR, dB)</h3>
+                    <p id="snr" class="text-gray-300">0 dB</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-2">检测结果</h3>
+                    <p id="detectionResult" class="text-gray-300"></p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-2">结果分析</h3>
+                    <p id="resultAnalysis" class="text-gray-300"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 新增：实验任务/挑战区块 -->
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4 text-white">实验任务与挑战</h2>
+            <ol class="list-decimal ml-6 text-gray-200 space-y-2">
+                <li>配置声纳信号处理链路，完成目标检测。</li>
+                <li>优化声纳参数（如波束宽度、脉冲类型），提升检测性能。</li>
+                <li>识别虚假目标，提交分析报告。</li>
+            </ol>
+            <button class="tech-btn mt-4" onclick="startChallenge()">开始挑战</button>
+        </section>
+
+        <!-- 新增：知识点测验区块 -->
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4 text-white">知识点测验</h2>
+            <form id="quizForm">
+                <div class="mb-4">
+                    <label class="block mb-2">1. 声纳系统中，哪项参数最直接影响分辨率？</label>
+                    <select class="w-full px-4 py-2 rounded-lg" required>
+                        <option value="">请选择</option>
+                        <option value="A">A. 波束宽度</option>
+                        <option value="B">B. 信号频率</option>
+                        <option value="C">C. 目标距离</option>
+                        <option value="D">D. 水深</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2">2. 声纳信号处理中，匹配滤波的主要作用是？</label>
+                    <select class="w-full px-4 py-2 rounded-lg" required>
+                        <option value="">请选择</option>
+                        <option value="A">A. 降低噪声</option>
+                        <option value="B">B. 提高信噪比</option>
+                        <option value="C">C. 增强目标回波</option>
+                        <option value="D">D. 以上都是</option>
+                    </select>
+                </div>
+                <button type="submit" class="tech-btn">提交测验</button>
+                <div id="quizFeedback" class="mt-4 text-yellow-300"></div>
+            </form>
+        </section>
+
+        <!-- 新增：实验报告区块 -->
+        <section class="card p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4 text-white">实验报告提交</h2>
+            <p class="mb-2">请根据实验结果，撰写并提交实验报告：</p>
+            <textarea id="reportText" class="w-full px-4 py-2 rounded-lg mb-2" rows="5" placeholder="输入实验报告内容..."></textarea>
+            <button class="tech-btn" onclick="submitReport()">提交报告</button>
+            <div id="reportFeedback" class="mt-2 text-green-300"></div>
+        </section>
+    </main>
+
+    <footer class="bg-[#0a1d37] text-gray-400 text-center py-6">
+        <p>© 2025 海洋信息实验教学平台. 保留所有权利.</p>
+    </footer>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        const runExperimentBtn = document.getElementById('runExperiment');
+        const signalTypeSelect = document.getElementById('signalType');
+        const waveformCanvas = document.getElementById('waveformCanvas');
+        const spectrumCanvas = document.getElementById('spectrumCanvas');
+        const receivedLevel = document.getElementById('receivedLevel');
+        const snrElement = document.getElementById('snr');
+        const detectionResult = document.getElementById('detectionResult');
+        const resultAnalysis = document.getElementById('resultAnalysis');
+        let userId = localStorage.getItem('user_id') || 1;
+
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('user_id');
+            alert('已退出登录');
+            window.location.href = 'index.html';
+        });
+
+        function updateParameterVisibility() {
+            const signalType = signalTypeSelect.value;
+            frequencyDiv.classList.remove('hidden');
+            pulseDurationDiv.classList.add('hidden');
+            lfmBandwidthDiv.classList.add('hidden');
+
+            if (signalType === 'cwPulse') {
+                pulseDurationDiv.classList.remove('hidden');
+            } else if (signalType === 'lfm') {
+                pulseDurationDiv.classList.remove('hidden');
+                lfmBandwidthDiv.classList.remove('hidden');
+            }
+        }
+        signalTypeSelect.addEventListener('change', updateParameterVisibility);
+        updateParameterVisibility();
+
+        const waveformChart = new Chart(waveformCanvas, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '波形',
+                    data: [],
+                    borderColor: '#2563eb',
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    x: { title: { display: true, text: '时间 (s)', color: '#e5e7eb' }, ticks: { color: '#e5e7eb' } },
+                    y: { title: { display: true, text: '幅度', color: '#e5e7eb' }, ticks: { color: '#e5e7eb' } }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e5e7eb' } }
+                }
+            }
+        });
+
+        const spectrumChart = new Chart(spectrumCanvas, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '频谱',
+                    data: [],
+                    borderColor: '#ef4444',
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    x: { title: { display: true, text: '频率 (Hz)', color: '#e5e7eb' }, ticks: { color: '#e5e7eb' } },
+                    y: { title: { display: true, text: '幅度', color: '#e5e7eb' }, ticks: { color: '#e5e7eb' } }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e5e7eb' } }
+                }
+            }
+        });
+
+        function calculateReflectionPath(start, end, reflectionOrder) {
+            const path = { points: [start], intensity: 1.0, totalDistance: 0, arrivalTime: 0, receivedLevel: 0 };
+            const decayFactor = 0.8;
+            const waveSpeed = 1.5;
+            const sourceLevel = 170;
+            const alpha = parseFloat(document.getElementById('alpha').value);
+
+            let currentPos = start.slice();
+            let currentEnd = end.slice();
+
+            for (let i = 0; i < reflectionOrder.length; i++) {
+                const boundary = reflectionOrder[i];
+                let mirrorEnd;
+
+                if (boundary === 0) { mirrorEnd = [currentEnd[0], currentEnd[1], 2.0 - currentEnd[2]]; }
+                else if (boundary === 1) { mirrorEnd = [currentEnd[0], currentEnd[1], -currentEnd[2]]; }
+                else if (boundary === 2) { mirrorEnd = [-3.0 - currentEnd[0], currentEnd[1], currentEnd[2]]; }
+                else if (boundary === 3) { mirrorEnd = [3.0 - currentEnd[0], currentEnd[1], currentEnd[2]]; }
+                else if (boundary === 4) { mirrorEnd = [currentEnd[0], -2.0 - currentEnd[1], currentEnd[2]]; }
+                else { mirrorEnd = [currentEnd[0], 2.0 - currentEnd[1], currentEnd[2]]; }
+
+                const dir = [
+                    mirrorEnd[0] - currentPos[0],
+                    mirrorEnd[1] - currentPos[1],
+                    mirrorEnd[2] - currentPos[2]
+                ];
+                const dirLength = Math.sqrt(dir.reduce((sum, val) => sum + val * val, 0));
+                const normalizedDir = dir.map(val => val / dirLength);
+
+                let t;
+                if (boundary === 0) t = (1.0 - currentPos[2]) / normalizedDir[2];
+                else if (boundary === 1) t = (0.0 - currentPos[2]) / normalizedDir[2];
+                else if (boundary === 2) t = (-1.5 - currentPos[0]) / normalizedDir[0];
+                else if (boundary === 3) t = (1.5 - currentPos[0]) / normalizedDir[0];
+                else if (boundary === 4) t = (-1.0 - currentPos[1]) / normalizedDir[1];
+                else t = (1.0 - currentPos[1]) / normalizedDir[1];
+
+                const reflectionPoint = [
+                    currentPos[0] + t * normalizedDir[0],
+                    currentPos[1] + t * normalizedDir[1],
+                    currentPos[2] + t * normalizedDir[2]
+                ];
+                path.points.push(reflectionPoint);
+                path.intensity *= decayFactor;
+                currentPos = reflectionPoint;
+                currentEnd = (i === reflectionOrder.length - 1) ? end : reflectionPoint;
+            }
+            path.points.push(end);
+
+            for (let i = 0; i < path.points.length - 1; i++) {
+                const dx = path.points[i + 1][0] - path.points[i][0];
+                const dy = path.points[i + 1][1] - path.points[i][1];
+                const dz = path.points[i + 1][2] - path.points[i][2];
+                path.totalDistance += Math.sqrt(dx * dx + dy * dy + dz * dz);
+            }
+
+            path.arrivalTime = path.totalDistance / waveSpeed;
+            path.tl = 20 * Math.log10(path.totalDistance) + alpha * path.totalDistance;
+            path.receivedLevel = sourceLevel - path.tl + 20 * Math.log10(path.intensity);
+
+            return path;
+        }
+
+        function generateWaveform(wavePaths, totalTime, sampleCount, noiseLevel, maxSNR, signalType, frequency, pulseDuration, lfmBandwidth) {
+            const waveform = new Array(sampleCount).fill(0);
+            const dt = totalTime / (sampleCount - 1);
+            const fs = 1.0 / dt;
+
+            let maxAmplitude = 0;
+            for (const path of wavePaths) {
+                const amplitude = Math.pow(10, path.receivedLevel / 20);
+                maxAmplitude = Math.max(maxAmplitude, amplitude);
+            }
+            if (maxAmplitude === 0) maxAmplitude = 1;
+
+            for (const path of wavePaths) {
+                const t0 = path.arrivalTime;
+                const amplitude = Math.pow(10, path.receivedLevel / 20) / maxAmplitude;
+
+                for (let i = 0; i < sampleCount; i++) {
+                    const t = i * dt;
+                    let signal = 0;
+
+                    if (signalType === 'cw') {
+                        signal = amplitude * Math.sin(2 * Math.PI * frequency * (t - t0));
+                    } else if (signalType === 'cwPulse') {
+                        if (t >= t0 && t < t0 + pulseDuration / 1000) {
+                            signal = amplitude * Math.sin(2 * Math.PI * frequency * (t - t0));
+                        }
+                    } else if (signalType === 'lfm') {
+                        if (t >= t0 && t < t0 + pulseDuration / 1000) {
+                            const mu = lfmBandwidth / (pulseDuration / 1000);
+                            const tau = t - t0;
+                            const phase = 2 * Math.PI * (frequency * tau + 0.5 * mu * tau * tau);
+                            signal = amplitude * Math.sin(phase);
+                        }
+                    }
+
+                    waveform[i] += signal;
+                }
+            }
+
+            if (maxSNR < 100) {
+                const noiseAmplitude = Math.pow(10, (noiseLevel - maxSNR) / 20) / maxAmplitude;
+                for (let i = 0; i < sampleCount; i++) {
+                    const noise = noiseAmplitude * (Math.random() - 0.5) * 2;
+                    waveform[i] += noise;
+                }
+            }
+
+            const spectrumSize = sampleCount / 2;
+            const spectrum = new Array(spectrumSize).fill(0);
+            const freqAxis = new Array(spectrumSize).fill(0);
+            const df = fs / sampleCount;
+
+            for (let k = 0; k < spectrumSize; k++) {
+                freqAxis[k] = k * df;
+                let real = 0, imag = 0;
+                for (let n = 0; n < sampleCount; n++) {
+                    const angle = 2 * Math.PI * k * n / sampleCount;
+                    real += waveform[n] * Math.cos(angle);
+                    imag -= waveform[n] * Math.sin(angle);
+                }
+                spectrum[k] = Math.sqrt(real * real + imag * imag) / sampleCount;
+            }
+
+            const maxSpec = Math.max(...spectrum);
+            if (maxSpec > 0) {
+                for (let i = 0; i < spectrum.length; i++) {
+                    spectrum[i] /= maxSpec;
+                }
+            }
+
+            const timeAxis = new Array(sampleCount).fill(0);
+            for (let i = 0; i < sampleCount; i++) {
+                timeAxis[i] = i * dt;
+            }
+
+            return { waveform, timeAxis, spectrum, freqAxis };
+        }
+
+        async function updateExperiment() {
+            const signalType = document.getElementById('signalType').value;
+            const frequency = parseFloat(document.getElementById('frequency').value);
+            const pulseDuration = parseFloat(document.getElementById('pulseDuration').value);
+            const lfmBandwidth = parseFloat(document.getElementById('lfmBandwidth').value);
+            const transmitterX = parseFloat(document.getElementById('transmitterX').value);
+            const transmitterY = parseFloat(document.getElementById('transmitterY').value);
+            const transmitterZ = parseFloat(document.getElementById('transmitterZ').value);
+            const receiverX = parseFloat(document.getElementById('receiverX').value);
+            const receiverY = parseFloat(document.getElementById('receiverY').value);
+            const receiverZ = parseFloat(document.getElementById('receiverZ').value);
+            const noiseLevel = parseFloat(document.getElementById('noiseLevel').value);
+            const detectionThreshold = parseFloat(document.getElementById('detectionThreshold').value);
+
+            const start = [transmitterX, transmitterY, transmitterZ];
+            const end = [receiverX, receiverY, receiverZ];
+            const wavePaths = [];
+
+            wavePaths.push(calculateReflectionPath(start, end, []));
+            wavePaths.push(calculateReflectionPath(start, end, [0]));
+            wavePaths.push(calculateReflectionPath(start, end, [1]));
+            wavePaths.push(calculateReflectionPath(start, end, [2]));
+            wavePaths.push(calculateReflectionPath(start, end, [3]));
+            wavePaths.push(calculateReflectionPath(start, end, [4]));
+            wavePaths.push(calculateReflectionPath(start, end, [5]));
+            wavePaths.push(calculateReflectionPath(start, end, [0, 1]));
+            wavePaths.push(calculateReflectionPath(start, end, [0, 2]));
+            wavePaths.push(calculateReflectionPath(start, end, [0, 1, 2]));
+
+            let rl = 0;
+            let snr = 0;
+            for (const path of wavePaths) {
+                if (path.points.length === 2) {
+                    rl = path.receivedLevel;
+                    snr = rl - noiseLevel;
+                    break;
+                }
+            }
+
+            let maxTime = 0;
+            for (const path of wavePaths) {
+                maxTime = Math.max(maxTime, path.arrivalTime);
+            }
+            maxTime += (signalType === 'cw' ? 0.5 : pulseDuration / 1000 + 0.5);
+            const sampleCount = 1000;
+
+            const { waveform, timeAxis, spectrum, freqAxis } = generateWaveform(
+                wavePaths,
+                maxTime,
+                sampleCount,
+                noiseLevel,
+                snr,
+                signalType,
+                frequency,
+                pulseDuration,
+                lfmBandwidth
+            );
+
+            waveformChart.data.labels = timeAxis;
+            waveformChart.data.datasets[0].data = waveform;
+            waveformChart.update();
+
+            spectrumChart.data.labels = freqAxis;
+            spectrumChart.data.datasets[0].data = spectrum;
+            spectrumChart.update();
+
+            receivedLevel.textContent = `${rl.toFixed(2)} dB`;
+            snrElement.textContent = `${snr.toFixed(2)} dB`;
+            const isDetectable = snr > detectionThreshold;
+            detectionResult.textContent = isDetectable ? '信号可检测' : '信号不可检测';
+            detectionResult.className = isDetectable ? 'text-green-400' : 'text-red-400';
+
+            let analysis = `接收声压级 (RL) 为 ${rl.toFixed(2)} dB，信噪比 (SNR) 为 ${snr.toFixed(2)} dB。`;
+            if (isDetectable) {
+                analysis += ` SNR 高于检测阈值 (${detectionThreshold} dB)，信号可以被检测到。`;
+                if (snr < detectionThreshold + 5) {
+                    analysis += ` 但 SNR 接近阈值，可能在高噪声环境下检测效果不稳定。`;
+                }
+            } else {
+                analysis += ` SNR 低于检测阈值 (${detectionThreshold} dB)，信号无法被检测到。`;
+                analysis += ` 建议增加发射功率、减小目标距离或降低噪声水平以提高 SNR。`;
+            }
+            resultAnalysis.textContent = analysis;
+
+            return isDetectable;
+        }
+
+        runExperimentBtn.addEventListener('click', async () => {
+            if (!userId) {
+                alert('请先登录');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 仅运行本地模拟
+            if (updateExperiment()) {
+                console.log("模拟实验运行成功！");
+            }
+        });
+
+        document.querySelectorAll('input, select').forEach(element => {
+            element.addEventListener('input', () => {
+                updateExperiment();
+            });
+            element.addEventListener('change', () => {
+                updateExperiment();
+            });
+        });
+
+        function createBubbles() {
+            const waveBg = document.querySelector('.wave-bg');
+            for (let i = 0; i < 30; i++) {
+                const bubble = document.createElement('div');
+                bubble.classList.add('bubble');
+                const size = Math.random() * 10 + 5;
+                bubble.style.width = `${size}px`;
+                bubble.style.height = `${size}px`;
+                bubble.style.left = `${Math.random() * 100}%`;
+                bubble.style.animationDuration = `${Math.random() * 10 + 10}s`;
+                bubble.style.animationDelay = `${Math.random() * 5}s`;
+                waveBg.appendChild(bubble);
+            }
+        }
+        createBubbles();
+
+        const sonarWaves = document.querySelectorAll('.sonar-wave');
+        document.addEventListener('mousemove', (e) => {
+            sonarWaves.forEach(wave => {
+                wave.style.left = `${e.clientX}px`;
+                wave.style.top = `${e.clientY}px`;
+            });
+        });
+
+        function startChallenge() {
+            alert('挑战开始！请根据任务要求完成实验。');
+        }
+        document.getElementById('quizForm').onsubmit = function(e) {
+            e.preventDefault();
+            // 简单判分逻辑
+            const selects = this.querySelectorAll('select');
+            let score = 0;
+            if(selects[0].value === 'A') score++;
+            if(selects[1].value === 'D') score++;
+            document.getElementById('quizFeedback').textContent = `得分：${score}/2。${score===2?'全部正确！':'请复习相关知识点。'}`;
+        };
+        function submitReport() {
+            const text = document.getElementById('reportText').value.trim();
+            if(!text) { document.getElementById('reportFeedback').textContent = '请填写实验报告'; return; }
+            document.getElementById('reportFeedback').textContent = '报告已提交，等待教师批阅。';
+        }
+    </script>
+</body>
+</html>

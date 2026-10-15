@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Lingxi.Home" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">#050912</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- 历史对话弹窗：透明窗背景，只露出自定义的暗色圆角面板，不受系统浅色模式影响出现白边。 -->
+    <style name="Theme.Lingxi.DarkDialog" parent="ThemeOverlay.Material3.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+
+    <!-- 云端配对含密文输入与验证结果，必须保持高对比、完整遮底，避免透明层叠误读。 -->
+    <style name="Theme.Lingxi.BrainDialog" parent="ThemeOverlay.Material3.Dialog">
+        <item name="android:windowBackground">@drawable/bg_brain_dialog</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="colorSurface">#151A25</item>
+        <item name="colorOnSurface">#F2F4FC</item>
+        <item name="colorPrimary">#9C8CFF</item>
+    </style>
+</resources>
